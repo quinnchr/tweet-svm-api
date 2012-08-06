@@ -12,10 +12,9 @@ def auth(func):
 	@wraps(func)
 	def decorator(*args, **kwargs):
 		# error out if we don't have a key & digest
-		if not ('digest' in request.form and 'key' in request.form):
+		if not request.headers.get('Authorization'):
 			raise CommandError('Request not authorized.')
-		request_digest = request.form['digest']
-		key = request.form['key']
+		key, request_digest = request.headers.get('Authorization').split(':')
 		# grab private key and compare digests
 		# TODO: db lookup goes here
 		db = redis.StrictRedis(host='localhost', port=6379, db=0)
@@ -24,9 +23,7 @@ def auth(func):
 			raise CommandError('Request not authorized.')
 		kwargs['user'] = db.hget('server:uuids', key)
 		server_digest = digest(request, private_key)
-		print private_key
-		print urllib.quote(server_digest)
-		print kwargs
+		print server_digest
 		if server_digest != request_digest:
 			raise CommandError('Request not authorized.')
 		return func(*args, **kwargs)
