@@ -3,7 +3,7 @@ import functools
 import redis
 from flask import Flask, Response, request
 from tweetsvm.manage import Manager, CommandError
-from auth import auth
+from auth import auth, access
 
 controller = Manager(redis.StrictRedis(host='localhost', port=6379, db=0))
 app = Flask(__name__)
@@ -70,6 +70,22 @@ def sources(stream="", source="", **kwargs):
 	if request.method == "DELETE":
 		return delete_source(kwargs['user'], stream, source)
 
+
+@app.route("/users/", methods=['POST'])
+@REST_response
+@auth
+@access("admin")
+def user_index(user="", **kwargs):
+	return add_user()
+
+
+@app.route("/users/<uuid>", methods=['DELETE'])
+@REST_response
+@auth
+@access("admin")
+def users(uuid="", **kwargs):
+	return delete_user(uuid)
+
 # Stream Methods
 
 
@@ -110,6 +126,19 @@ def delete_source(user, stream, source):
 
 
 def get_source(stream, source):
+	return True
+
+# User Methods
+
+
+def add_user():
+	user = controller.add_user()
+	print user
+	return {'uuid': user[0], 'public_key': user[1], 'private_key': user[2]}
+
+
+def delete_user(user):
+	controller.remove_user(user=user)
 	return True
 
 if __name__ == "__main__":

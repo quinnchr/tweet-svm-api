@@ -22,12 +22,26 @@ def auth(func):
 		if not private_key:
 			raise CommandError('Request not authorized.')
 		kwargs['user'] = db.hget('server:uuids', key)
+		kwargs['public_key'] = key
 		server_digest = digest(request, private_key)
 		print server_digest
 		if server_digest != request_digest:
 			raise CommandError('Request not authorized.')
 		return func(*args, **kwargs)
 	return decorator
+
+
+def access(level):
+	def wrapper(func):
+		@wraps(func)
+		def decorator(*args, **kwargs):
+			db = redis.StrictRedis(host='localhost', port=6379, db=0)
+			user = kwargs['user']
+			if not db.sismember('server:access:' + level, user):
+				raise CommandError('Unauthorized access.')
+			return func(*args, **kwargs)
+		return decorator
+	return wrapper
 
 
 def digest(request, private_key):
